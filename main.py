@@ -145,7 +145,7 @@ def arcade_game():
                 elif event.key == pygame.K_SPACE:  # Press space to print selected game number
                     print(f"Current Game: {current_game + 1}")
                     if current_game == 0: 
-                        racer.main()
+                        racer.game_loop()
                     if current_game == 1: 
                         space_shooter.main()
                     #if current_game == 2: 
