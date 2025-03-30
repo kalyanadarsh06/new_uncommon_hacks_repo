@@ -360,10 +360,9 @@ class Boss(Enemy):
                         (3*PLAYER_SIZE//4 - eye_width//2, eye_y, eye_width, eye_height))
         self.rect = pygame.Rect(x, y, PLAYER_SIZE, PLAYER_SIZE)
         self.speed = 1.7  
-        self.health = 120  # 2x normal enemy health (60 * 2)
+        self.health = 120
         self.max_health = 120
-        self.damage = 50  # Double enemy damage (15 * 2)
-        
+        self.damage = 50  
     def move_towards(self, target, walls, other_enemies, lava_tiles, fire_pillars):
         current_time = pygame.time.get_ticks()
         if current_time - self.last_move_time < self.move_delay:
@@ -807,7 +806,7 @@ class Game:
         self.clock = pygame.time.Clock()
         self.running = True
         self.state = GameState.COMBAT
-        self.current_level = 3  # Temporarily set to level 3 for testing
+        self.current_level = 1  # Start from level 1
         self.level = Level(self.current_level)
         
         # Find safe spawn for player
@@ -1411,14 +1410,6 @@ class Game:
         pygame.quit()
 
 if __name__ == '__main__':
-    try:
-        print("Starting game...")
-        game = Game()
-        print("Game initialized, starting game loop...")
-        game.run()
-    except Exception as e:
-        print(f"Error occurred: {e}")
-        import traceback
-        traceback.print_exc()
-    finally:
-        pygame.quit()
+    game = Game()
+    game.run()
+    pygame.quit()
