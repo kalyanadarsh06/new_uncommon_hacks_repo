@@ -310,7 +310,7 @@ def win_screen():
                     if selected_button == "RESTART":
                         main()  # Restart the game
                         return True
-                    elif selected_button == "QUIT":
+                    elif selected_button == "MAIN MENU":
                         return True
 
 # Main game loop
@@ -475,6 +475,11 @@ def main():
             ):
                 coins.remove(coin)  # Collect the coin
                 score += 5  # Increase score when collecting a coin
+                if score >= 50:  # Check if the player has won
+                    game_quit = win_screen()  # Show win screen
+                break
+        if game_quit:
+            break
 
         # Draw everything
         spaceship.draw()
@@ -503,7 +508,8 @@ def main():
         clock.tick(60)
 
     #GAME OVER function - make this take you to the main menu
-    start_screen()
+    print("Main Menu")
+    main()
 
 if __name__ == "__main__":
     main()
