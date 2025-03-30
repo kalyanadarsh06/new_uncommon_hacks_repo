@@ -166,7 +166,7 @@ def start_screen():
             if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
                 return  # Start the game
 
-def pause_screen():
+def pause_screen(score):
     overlay = pygame.Surface((WIDTH, HEIGHT))
     overlay.set_alpha(128)  # Make the overlay semi-transparent
     overlay.fill(BLACK)
@@ -175,6 +175,7 @@ def pause_screen():
     description_font = pygame.font.SysFont(None, 24)
 
     paused_text = font.render("PAUSED", True, WHITE)
+    score_text = pygame.font.SysFont(None, 36).render(f"Score: {score}", True, WHITE)
     continue_button = pygame.Rect(WIDTH // 2 - 210, HEIGHT // 2 + 100, 200, 50)  # Left button moved down
     quit_button = pygame.Rect(WIDTH // 2 + 10, HEIGHT // 2 + 100, 200, 50)  # Right button moved down
 
@@ -183,6 +184,7 @@ def pause_screen():
     while True:
         screen.blit(overlay, (0, 0))
         screen.blit(paused_text, (WIDTH // 2 - paused_text.get_width() // 2, HEIGHT // 3))
+        screen.blit(score_text, (WIDTH // 2 - score_text.get_width() // 2, 10))  # Score at the top middle
 
         # Game description
         description_lines = [
@@ -232,6 +234,7 @@ def game_over_screen(score):
     button_font = pygame.font.SysFont(None, 36)
 
     game_over_text = font.render("GAME OVER", True, RED)
+    score_text = pygame.font.SysFont(None, 36).render(f"Score: {score}", True, WHITE)
     restart_button = pygame.Rect(WIDTH // 2 - 210, HEIGHT // 2, 200, 50)  # Left button
     quit_button = pygame.Rect(WIDTH // 2 + 10, HEIGHT // 2, 200, 50)  # Right button
 
@@ -240,6 +243,7 @@ def game_over_screen(score):
     while True:
         screen.blit(overlay, (0, 0))
         screen.blit(game_over_text, (WIDTH // 2 - game_over_text.get_width() // 2, HEIGHT // 3))
+        screen.blit(score_text, (WIDTH // 2 - score_text.get_width() // 2, 10))  # Score at the top middle
 
         # Highlight selected button
         pygame.draw.rect(screen, WHITE if selected_button == "RESTART" else (100, 100, 100), restart_button)
@@ -310,7 +314,7 @@ def win_screen():
                     if selected_button == "RESTART":
                         main()  # Restart the game
                         return True
-                    elif selected_button == "QUIT":
+                    elif selected_button == "MAIN MENU":
                         return True
 
 # Main game loop
@@ -353,7 +357,7 @@ def main():
                 elif event.key == pygame.K_SPACE:
                     spaceship.shoot()
                 elif event.key == pygame.K_r:  # Press 'P' to pause
-                    game_quit = pause_screen()
+                    game_quit = pause_screen(score)
                     break
                 time_of_last_keydown = 0  # Reset the timer after a key press
         if game_quit:
@@ -475,6 +479,11 @@ def main():
             ):
                 coins.remove(coin)  # Collect the coin
                 score += 5  # Increase score when collecting a coin
+                if score >= 50:  # Check if the player has won
+                    game_quit = win_screen()  # Show win screen
+                break
+        if game_quit:
+            break
 
         # Draw everything
         spaceship.draw()
@@ -503,7 +512,8 @@ def main():
         clock.tick(60)
 
     #GAME OVER function - make this take you to the main menu
-    start_screen()
+    print("Take me to the Main Menu!")
 
 if __name__ == "__main__":
     main()
+    print("here")

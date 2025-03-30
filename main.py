@@ -134,13 +134,13 @@ def arcade_game():
             
             if event.type == pygame.KEYDOWN:
                 # Arrow key movement to select a game
-                if event.key == pygame.K_LEFT and current_game % 3 > 0:  # Move left
+                if event.key == pygame.K_a and current_game % 3 > 0:  # Move left
                     current_game -= 1
-                elif event.key == pygame.K_RIGHT and current_game % 3 < 2:  # Move right
+                elif event.key == pygame.K_d and current_game % 3 < 2:  # Move right
                     current_game += 1
-                elif event.key == pygame.K_UP and current_game >= 3:  # Move up
+                elif event.key == pygame.K_w and current_game >= 3:  # Move up
                     current_game -= 3
-                elif event.key == pygame.K_DOWN and current_game < 3:  # Move down
+                elif event.key == pygame.K_s and current_game < 3:  # Move down
                     current_game += 3
                 elif event.key == pygame.K_SPACE:  # Press space to print selected game number
                     print(f"Current Game: {current_game + 1}")
