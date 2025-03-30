@@ -7,9 +7,12 @@ from enum import Enum
 
 try:
     import pygame
+    import serial
     pygame.init()
+    pygame.font.init()
     print(f"Using Pygame version: {pygame.version.ver}")
     print(f"Display driver: {pygame.display.get_driver()}")
+    arduino = serial.Serial('/dev/tty.usbmodem141101', 9600, timeout=0.1) 
 except ImportError as e:
     print(f"Error importing Pygame: {e}")
     sys.exit(1)
@@ -19,9 +22,16 @@ except Exception as e:
 
 WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
+FPS = 60
 TILE_SIZE = 40
 PLAYER_SIZE = 40
-FPS = 60
+
+# Get the absolute path to the assets directory
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ASSETS_DIR = os.path.join(BASE_DIR, 'assets')
+IMAGES_DIR = os.path.join(ASSETS_DIR, 'images')
+SPRITES_DIR = os.path.join(IMAGES_DIR, 'sprites')
+TILES_DIR = os.path.join(IMAGES_DIR, 'tiles')
 
 COLORS = {
     'black': (0, 0, 0),
@@ -44,11 +54,11 @@ COLORS = {
 }
 
 class GameState(Enum):
+    START = 0
     COMBAT = 1
-    TRANSITION = 2
+    PAUSED = 2
     GAME_OVER = 3
-    PAUSED = 4
-    GAME_WON = 5
+    GAME_WON = 4
 
 class PowerUpType(Enum):
     HEALTH_POTION = 1
@@ -89,6 +99,9 @@ class Direction(Enum):
     DOWN = (0, 1)
     LEFT = (-1, 0)
     RIGHT = (1, 0)
+    
+    def value_tuple(self):
+        return self.value    
 
 class PowerUp:
     def __init__(self, x, y, power_up_type):
@@ -97,9 +110,9 @@ class PowerUp:
         self.creation_time = time.time()
         
         if power_up_type == PowerUpType.HEALTH_POTION:
-            self.sprite = Sprite(os.path.join('..', 'assets', 'images', 'sprites', 'potion.png'), TILE_SIZE)
+            self.sprite = Sprite(os.path.join(SPRITES_DIR, 'potion.png'), TILE_SIZE)
         else:
-            self.sprite = Sprite(os.path.join('..', 'assets', 'images', 'sprites', 'staff.png'), TILE_SIZE)
+            self.sprite = Sprite(os.path.join(SPRITES_DIR, 'staff.png'), TILE_SIZE)
             
         self.effect_radius = 0
         self.max_radius = TILE_SIZE * 5
@@ -125,11 +138,11 @@ class PowerUp:
 
 class Player:
     def __init__(self, x, y):
-        self.sprite = Sprite('../assets/images/sprites/player.png', PLAYER_SIZE)
+        self.sprite = Sprite(os.path.join(SPRITES_DIR, 'player.png'), PLAYER_SIZE)
         self.rect = pygame.Rect(x, y, PLAYER_SIZE, PLAYER_SIZE)
         self.grid_move_size = TILE_SIZE
-        self.health = 300
-        self.max_health = 300
+        self.health = 150
+        self.max_health = 150
         self.arrows = []
         self.last_shot_time = 0
         self.shoot_delay = 500
@@ -183,11 +196,11 @@ class Player:
         return True
 
     def shoot(self, direction):
-        current_time = pygame.time.get_ticks()
-        if current_time - self.last_shot_time >= self.shoot_delay:
-            arrow = Arrow(self.rect.centerx, self.rect.centery, direction)
+        now = pygame.time.get_ticks()
+        if now - self.last_shot_time > self.shoot_delay:
+            self.last_shot_time = now
+            arrow = Arrow(self.rect.centerx, self.rect.centery, direction.value_tuple())
             self.arrows.append(arrow)
-            self.last_shot_time = current_time
     
     def draw(self, screen):
         screen.blit(self.sprite.image, self.rect)
@@ -211,7 +224,7 @@ class Player:
 
 class Enemy:
     def __init__(self, x, y, level=1):
-        self.sprite = Sprite('../assets/images/sprites/enemy.png', PLAYER_SIZE)
+        self.sprite = Sprite(os.path.join(SPRITES_DIR, 'enemy.png'), PLAYER_SIZE)
         self.rect = pygame.Rect(x, y, PLAYER_SIZE, PLAYER_SIZE)
         self.speed = 0.8
         
@@ -307,7 +320,7 @@ class Enemy:
 class Boss(Enemy):
     def __init__(self, x, y):
         super().__init__(x, y, level=3)
-        self.sprite = Sprite('../assets/images/sprites/enemy.png', PLAYER_SIZE)
+        self.sprite = Sprite(os.path.join(SPRITES_DIR, 'enemy.png'), PLAYER_SIZE)
         original_surface = self.sprite.image
         self.sprite.image = pygame.Surface(original_surface.get_size(), pygame.SRCALPHA)
         self.sprite.image.fill((0, 0, 0, 255))
@@ -492,8 +505,8 @@ class Level:
         self.fire_pillars = []
         self.lava_tiles = []
         self.tiles = {
-            'floor': [Sprite(f'../assets/images/tiles/floor_{i}.png', TILE_SIZE) for i in range(3)],
-            'wall': [Sprite(f'../assets/images/tiles/wall_{i}.png', TILE_SIZE) for i in range(3)]
+            'floor': [Sprite(os.path.join(TILES_DIR, f'floor_{i}.png'), TILE_SIZE) for i in range(3)],
+            'wall': [Sprite(os.path.join(TILES_DIR, f'wall_{i}.png'), TILE_SIZE) for i in range(3)]
         }
         if level_number == 3:
             self.floor_color = COLORS['dark_red']
@@ -696,6 +709,10 @@ class Level:
 class Game:
     def __init__(self):
         try:
+            if not pygame.get_init():
+                pygame.init()
+            if not pygame.font.get_init():
+                pygame.font.init()
             self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.HWSURFACE | pygame.DOUBLEBUF)
             pygame.display.set_caption("Dungeon Escape")
         except pygame.error as e:
@@ -710,10 +727,14 @@ class Game:
         
         self.clock = pygame.time.Clock()
         self.running = True
-        self.state = GameState.COMBAT
+        self.state = GameState.START
         self.current_level = 1
         self.level = Level(self.current_level)
         self.selected_button = 0
+        
+        # Arduino control timing
+        self.last_command_time = 0
+        self.command_cooldown = 200  # ms
         
         spawn_x, spawn_y = self.find_safe_spawn()
         self.player = Player(spawn_x, spawn_y)
@@ -931,59 +952,6 @@ class Game:
         
         return enemies
     
-    def handle_input(self):
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                self.running = False
-            elif event.type == pygame.MOUSEBUTTONDOWN and (self.state == GameState.GAME_OVER or self.state == GameState.GAME_WON):
-                mouse_pos = pygame.mouse.get_pos()
-                if self.restart_button.collidepoint(mouse_pos):
-                    self.__init__()
-                    self.state = GameState.COMBAT
-                elif self.exit_button.collidepoint(mouse_pos):
-                    self.running = False
-            elif event.type == pygame.KEYDOWN:
-                if self.state == GameState.COMBAT:
-                    if event.key == pygame.K_a:
-                        self.player.facing = Direction.LEFT
-                        self.player.move(-1, 0, self.level.walls)
-                    elif event.key == pygame.K_d:
-                        self.player.facing = Direction.RIGHT
-                        self.player.move(1, 0, self.level.walls)
-                    elif event.key == pygame.K_w:
-                        self.player.facing = Direction.UP
-                        self.player.move(0, -1, self.level.walls)
-                    elif event.key == pygame.K_s:
-                        self.player.facing = Direction.DOWN
-                        self.player.move(0, 1, self.level.walls)
-                    elif event.key == pygame.K_SPACE:
-                        self.player.shoot(self.player.facing.value)
-                    elif event.key == pygame.K_ESCAPE:
-                        self.state = GameState.PAUSED
-                        self.selected_button = 0
-                elif self.state == GameState.PAUSED:
-                    if event.key == pygame.K_a:
-                        self.selected_button = 0
-                    elif event.key == pygame.K_d:
-                        self.selected_button = 1
-                    elif event.key == pygame.K_SPACE:
-                        if self.selected_button == 0:
-                            self.state = GameState.COMBAT
-                        else:
-                            self.running = False
-                    elif event.key == pygame.K_ESCAPE:
-                        self.state = GameState.COMBAT
-                elif self.state in [GameState.GAME_OVER, GameState.GAME_WON]:
-                    if event.key == pygame.K_a:
-                        self.selected_button = 0
-                    elif event.key == pygame.K_d:
-                        self.selected_button = 1
-                    elif event.key == pygame.K_SPACE:
-                        if self.selected_button == 0:
-                            self.__init__()
-                        else:
-                            self.running = False
-    
     def find_power_up_position(self):
         while True:
             x = random.randint(TILE_SIZE, WINDOW_WIDTH - TILE_SIZE)
@@ -1173,10 +1141,16 @@ class Game:
                     break
     
     def create_pixelated_text(self, text, size, color):
-        font = pygame.font.Font(None, size)
-        text_surface = font.render(text, True, color)
-        
-        scale_factor = 4
+        try:
+            if not pygame.font.get_init():
+                pygame.font.init()
+            font = pygame.font.Font(None, size)
+            text_surface = font.render(text, True, color)
+            
+            scale_factor = 4
+        except Exception as e:
+            print(f"Error creating text: {e}")
+            return pygame.Surface((1, 1))
         small_surface = pygame.transform.scale(text_surface, 
             (text_surface.get_width()//scale_factor, 
              text_surface.get_height()//scale_factor))
@@ -1206,37 +1180,92 @@ class Game:
         except:
             return self.create_pixelated_text(text, size, color)
 
-
-
-    def draw_pause_menu(self):
+    def draw_start_screen(self):
+        self.screen.fill(COLORS['very_dark_gray'])
+        
+        # Create semi-transparent overlay
         overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
         overlay.fill((0, 0, 0))
         overlay.set_alpha(200)
         self.screen.blit(overlay, (0, 0))
 
+        # Draw border
         border_padding = 20
         pygame.draw.rect(self.screen, COLORS['white'], 
                        (border_padding, border_padding, 
                         WINDOW_WIDTH - 2*border_padding, 
                         WINDOW_HEIGHT - 2*border_padding), 2)
-
-        title = self.create_menu_text("GAME PAUSED", 60, COLORS['white'])
+        
+        # Draw title
+        title = self.create_menu_text("DUNGEON ESCAPE", 60, COLORS['red'])
         self.screen.blit(title, (WINDOW_WIDTH//2 - title.get_width()//2, 40))
-
+        
+        # Draw instructions
         sections = [
             ("CONTROLS", [
-                "A/D - Select button",
-                "Space - Confirm selection",
-                "R - Pause/Resume"
+                "A/D - Move Left/Right",
+                "W/S - Move Up/Down",
+                "SPACE - Shoot Arrows",
+                "R - Pause Game"
+            ]),
+            ("ITEMS", [
+                "Potions - Restore Health",
+                "Staffs - Increase Power",
+                "",
+                "Press SPACE to Start"
+            ])
+        ]
+
+        y = 120
+        for section_title, items in sections:
+            header = self.create_menu_text(section_title, 36, COLORS['yellow'])
+            self.screen.blit(header, (WINDOW_WIDTH//2 - header.get_width()//2, y))
+            y += 35
+
+            for item in items:
+                text = self.create_menu_text(item, 28, COLORS['white'])
+                self.screen.blit(text, (WINDOW_WIDTH//2 - text.get_width()//2, y))
+                y += 30
+            
+            y += 15
+        
+        pygame.display.flip()
+
+
+
+    def draw_pause_menu(self):
+        # Create semi-transparent overlay
+        overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
+        overlay.fill((0, 0, 0))
+        overlay.set_alpha(200)
+        self.screen.blit(overlay, (0, 0))
+
+        # Draw border
+        border_padding = 20
+        pygame.draw.rect(self.screen, COLORS['white'], 
+                       (border_padding, border_padding, 
+                        WINDOW_WIDTH - 2*border_padding, 
+                        WINDOW_HEIGHT - 2*border_padding), 2)
+        
+        # Draw title
+        title = self.create_menu_text("GAME PAUSED", 60, COLORS['yellow'])
+        self.screen.blit(title, (WINDOW_WIDTH//2 - title.get_width()//2, 40))
+        
+        # Draw instructions
+        sections = [
+            ("CONTROLS", [
+                "A/D - Select Option",
+                "SPACE - Confirm Selection",
+                "R/ESC - Resume Game"
             ]),
             ("POWER-UPS", [
-                "Health Potion - Restores health",
-                "Magic Staff - Doubles damage"
+                "Health Potion - Restores Health",
+                "Magic Staff - Doubles Damage"
             ]),
             ("TIPS", [
-                "Avoid  poison and lava",
-                "Defeat all enemies to advance",
-                "Boss appears in level 3!"
+                "Avoid Poison and Lava",
+                "Defeat All Enemies to Advance",
+                "Boss Appears in Level 3!"
             ])
         ]
 
@@ -1253,25 +1282,30 @@ class Game:
             
             y += 15
 
+        # Create buttons
         button_y = WINDOW_HEIGHT - 80
         resume_rect = pygame.Rect(WINDOW_WIDTH//4 - 100, button_y, 200, 50)
         quit_rect = pygame.Rect(WINDOW_WIDTH*3//4 - 100, button_y, 200, 50)
+
+        # Draw buttons with selection highlight
         self.draw_retro_button(resume_rect, COLORS['green'] if self.selected_button == 0 else COLORS['dark_red'])
         self.draw_retro_button(quit_rect, COLORS['red'] if self.selected_button == 1 else COLORS['dark_red'])
+
+        # Button text
         resume_text = self.create_menu_text("RESUME", 32, COLORS['white'])
-        quit_text = self.create_menu_text("MAIN MENU", 32, COLORS['white'])
+        quit_text = self.create_menu_text("QUIT", 32, COLORS['white'])
 
         self.screen.blit(resume_text, (resume_rect.centerx - resume_text.get_width()//2, 
-                                      resume_rect.centery - resume_text.get_height()//2))
+                                     resume_rect.centery - resume_text.get_height()//2))
         self.screen.blit(quit_text, (quit_rect.centerx - quit_text.get_width()//2, 
-                                    quit_rect.centery - quit_text.get_height()//2))
+                                   quit_rect.centery - quit_text.get_height()//2))
 
         # Store button rects for interaction
         self.restart_button = resume_rect
         self.exit_button = quit_rect
 
         pygame.display.flip()
-
+        
     def draw_victory_screen(self):
         # Create semi-transparent overlay
         overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
@@ -1401,56 +1435,156 @@ class Game:
             self.draw_victory_screen()
         elif self.state == GameState.PAUSED:
             self.draw_pause_menu()
+        elif self.state == GameState.START:
+            self.draw_start_screen()
     
+    def handle_input(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.running = False
+            elif event.type == pygame.KEYDOWN:
+                if self.state == GameState.START:
+                    if event.key == pygame.K_SPACE:
+                        self.state = GameState.COMBAT
+                elif self.state == GameState.COMBAT:
+                    if event.key == pygame.K_a:
+                        self.player.facing = Direction.LEFT
+                        self.player.move(-1, 0, self.level.walls)
+                    elif event.key == pygame.K_d:
+                        self.player.facing = Direction.RIGHT
+                        self.player.move(1, 0, self.level.walls)
+                    elif event.key == pygame.K_w:
+                        self.player.facing = Direction.UP
+                        self.player.move(0, -1, self.level.walls)
+                    elif event.key == pygame.K_s:
+                        self.player.facing = Direction.DOWN
+                        self.player.move(0, 1, self.level.walls)
+                    elif event.key == pygame.K_SPACE:
+                        self.player.shoot(self.player.facing)
+                    elif event.key == pygame.K_r or event.key == pygame.K_ESCAPE:  
+                        self.state = GameState.PAUSED
+                        self.selected_button = 0
+                elif self.state == GameState.PAUSED:
+                    if event.key in [pygame.K_a, pygame.K_d]:  
+                        self.selected_button = 1 - self.selected_button  
+                    elif event.key == pygame.K_SPACE:  
+                        if self.selected_button == 0:  
+                            self.state = GameState.COMBAT
+                        else:  
+                            self.running = False
+                    elif event.key in [pygame.K_r, pygame.K_ESCAPE]:  
+                        self.state = GameState.COMBAT
+                elif self.state in [GameState.GAME_OVER, GameState.GAME_WON]:
+                    if event.key in [pygame.K_a, pygame.K_d]:
+                        self.selected_button = 1 - self.selected_button  
+                    elif event.key == pygame.K_SPACE:
+                        if self.selected_button == 0:  
+                            self.__init__()
+                            self.state = GameState.COMBAT
+                        else:  
+                            self.running = False
+        
+        if arduino and arduino.in_waiting:
+            command = arduino.readline().decode('utf-8').strip()
+            now = pygame.time.get_ticks()
+            
+            if now - self.last_command_time > self.command_cooldown:
+                self.last_command_time = now
+                
+                if self.state == GameState.START and command == "SPACE":
+                    self.state = GameState.COMBAT
+                elif self.state == GameState.COMBAT:
+                    if command == "A":
+                        self.player.facing = Direction.LEFT
+                        self.player.move(-1, 0, self.level.walls)
+                    elif command == "D":
+                        self.player.facing = Direction.RIGHT
+                        self.player.move(1, 0, self.level.walls)
+                    elif command == "W":
+                        self.player.facing = Direction.UP
+                        self.player.move(0, -1, self.level.walls)
+                    elif command == "S":
+                        self.player.facing = Direction.DOWN
+                        self.player.move(0, 1, self.level.walls)
+                    elif command == "SPACE":
+                        self.player.shoot(self.player.facing)
+                    elif command == "R":  
+                        self.state = GameState.PAUSED
+                        self.selected_button = 0
+                elif self.state == GameState.PAUSED:
+                    if command in ["A", "D"]:  
+                        self.selected_button = 1 - self.selected_button  
+                    elif command == "SPACE":  
+                        if self.selected_button == 0:  
+                            self.state = GameState.COMBAT
+                        else:  
+                            self.running = False
+                    elif command == "R":  
+                        self.state = GameState.COMBAT
+                elif self.state in [GameState.GAME_OVER, GameState.GAME_WON]:
+                    if command in ["A", "D"]:
+                        self.selected_button = 1 - self.selected_button  
+                    elif command == "SPACE":
+                        if self.selected_button == 0:  
+                            self.__init__()
+                            self.state = GameState.COMBAT
+                        else:  
+                            self.running = False
+
     def run(self):
         while self.running:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    return
-                elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_r and self.state in [GameState.COMBAT, GameState.PAUSED]:
-                        if self.state == GameState.PAUSED:
-                            self.state = GameState.COMBAT
-                        else:
-                            self.state = GameState.PAUSED
-                            self.selected_button = 0
+            if arduino and arduino.in_waiting:
+                command = arduino.readline().decode('utf-8').strip()
+                now = pygame.time.get_ticks()
+                
+                if now - self.last_command_time > self.command_cooldown:
+                    self.last_command_time = now
+                    
+                    if self.state == GameState.START and command == "SPACE":
+                        self.state = GameState.COMBAT
                     elif self.state == GameState.COMBAT:
-                        if event.key == pygame.K_ESCAPE:
-                            self.state = GameState.PAUSED
-                            self.selected_button = 0
-                        elif event.key == pygame.K_a:
+                        if command == "A":
                             self.player.facing = Direction.LEFT
                             self.player.move(-1, 0, self.level.walls)
-                        elif event.key == pygame.K_d:
+                        elif command == "D":
                             self.player.facing = Direction.RIGHT
                             self.player.move(1, 0, self.level.walls)
-                        elif event.key == pygame.K_w:
+                        elif command == "W":
                             self.player.facing = Direction.UP
                             self.player.move(0, -1, self.level.walls)
-                        elif event.key == pygame.K_s:
+                        elif command == "S":
                             self.player.facing = Direction.DOWN
                             self.player.move(0, 1, self.level.walls)
-                        elif event.key == pygame.K_SPACE:
-                            self.player.shoot(self.player.facing.value)
-                    elif self.state in [GameState.PAUSED, GameState.GAME_OVER, GameState.GAME_WON]:
-                        if event.key == pygame.K_ESCAPE and self.state == GameState.PAUSED:
-                            self.state = GameState.COMBAT
-                        elif event.key == pygame.K_a:
+                        elif command == "SPACE":
+                            self.player.shoot(self.player.facing)
+                        elif command == "R":  
+                            self.state = GameState.PAUSED
                             self.selected_button = 0
-                        elif event.key == pygame.K_d:
-                            self.selected_button = 1
-                        elif event.key == pygame.K_SPACE:
-                            if self.selected_button == 0:
-                                if self.state in [GameState.GAME_OVER, GameState.GAME_WON]:
-                                    self.__init__()
-                                    self.state = GameState.COMBAT
-                                else:
-                                    self.state = GameState.COMBAT
-                            else:
-                                return
+                    elif self.state == GameState.PAUSED:
+                        if command in ["A", "D"]:  
+                            self.selected_button = 1 - self.selected_button  
+                        elif command == "SPACE":  
+                            if self.selected_button == 0:  
+                                self.state = GameState.COMBAT
+                            else:  
+                                self.running = False
+                        elif command == "R":  
+                            self.state = GameState.COMBAT
+                    elif self.state in [GameState.GAME_OVER, GameState.GAME_WON]:
+                        if command in ["A", "D"]:
+                            self.selected_button = 1 - self.selected_button  
+                        elif command == "SPACE":
+                            if self.selected_button == 0:  
+                                self.__init__()
+                                self.state = GameState.COMBAT
+                            else:  
+                                self.running = False
             
-            if self.state == GameState.COMBAT:
-                self.handle_input()
+            self.handle_input()
+            
+            if self.state == GameState.START:
+                self.draw_start_screen()
+            elif self.state == GameState.COMBAT:
                 self.update()
                 self.draw()
             elif self.state == GameState.PAUSED:
@@ -1464,7 +1598,19 @@ class Game:
         
         return
 
+        
+
+
+def main():
+    try:
+        game = Game()
+        game.run()
+    except Exception as e:
+        print(f"Error occurred: {e}")
+        import traceback
+        traceback.print_exc()
+    finally:
+        pygame.quit()
+
 if __name__ == '__main__':
-    game = Game()
-    game.run()
-    print("here")
+    main()
