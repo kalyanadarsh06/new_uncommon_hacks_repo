@@ -238,9 +238,9 @@ def win_screen(winner):
             if event.type == pygame.QUIT:
                 return "quit"
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
+                if event.key == pygame.K_d or event.key == pygame.K_a:
                     selected_button = 1 - selected_button  # Toggle between 0 and 1
-                if event.key == pygame.K_RETURN:
+                if event.key == pygame.K_SPACE:
                     return "play_again" if selected_button == 0 else "main_menu"
 
                 
@@ -281,9 +281,9 @@ def pause_menu():
             if event.type == pygame.QUIT:
                 return
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
+                if event.key == pygame.K_d or event.key == pygame.K_a:
                     selected_button = 1 - selected_button  # Toggle between 0 and 1
-                if event.key == pygame.K_RETURN:
+                if event.key == pygame.K_SPACE:
                     if selected_button == 0:
                         paused = False  # Resume
                         return "resume"
