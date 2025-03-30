@@ -512,7 +512,7 @@ def main():
         clock.tick(60)
 
     #GAME OVER function - make this take you to the main menu
-    print("Main Menu")
+    print("Take me to the Main Menu!")
     main()
 
 if __name__ == "__main__":
