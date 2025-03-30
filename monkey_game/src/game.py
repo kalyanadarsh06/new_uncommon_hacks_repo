@@ -1,13 +1,14 @@
 import pygame
 import random
 import serial
+import time
 
 pygame.init()
 
 # Screen settings
 WIDTH, HEIGHT = 600, 600
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Retro Subway Run")
+pygame.display.set_caption("Retro Monkey Run")
 
 # Load Images
 background_img = pygame.image.load("background.png").convert()
@@ -50,7 +51,11 @@ START, PLAYING, GAME_OVER = 0, 1, 2
 game_state = START
 
 # Connect to Arduino
-arduino = serial.Serial('/dev/tty.usbmodem143101', 9600, timeout=0.1)
+arduino = serial.Serial('/dev/tty.usbmodem141101', 9600, timeout=0.1)
+
+# Debounce timers
+last_command_time = 0
+command_cooldown = 200  # milliseconds
 
 # Drawing functions
 def draw():
@@ -94,24 +99,27 @@ while running:
     # Handle Arduino input
     if arduino.in_waiting:
         command = arduino.readline().decode('utf-8').strip()
-        print("Arduino:", command)
+        now = pygame.time.get_ticks()
 
-        if game_state == START and command == "SPACE":
-            game_state = PLAYING
+        if now - last_command_time > command_cooldown:
+            last_command_time = now
 
-        elif game_state == GAME_OVER and command == "SPACE":
-            game_state = PLAYING
-            obstacles.clear()
-            coins.clear()
-            score = 0
-            obstacle_speed = initial_obstacle_speed
-            coin_speed = initial_obstacle_speed
+            if game_state == START and command == "SPACE":
+                game_state = PLAYING
 
-        elif game_state == PLAYING:
-            if command == "A" and current_lane > 0:
-                current_lane -= 1
-            elif command == "D" and current_lane < 3:
-                current_lane += 1
+            elif game_state == GAME_OVER and command == "SPACE":
+                game_state = PLAYING
+                obstacles.clear()
+                coins.clear()
+                score = 0
+                obstacle_speed = initial_obstacle_speed
+                coin_speed = initial_obstacle_speed
+
+            elif game_state == PLAYING:
+                if command == "A" and current_lane > 0:
+                    current_lane -= 1
+                elif command == "D" and current_lane < 3:
+                    current_lane += 1
 
     if game_state == PLAYING:
         spawn_timer += 1
