@@ -22,6 +22,7 @@ BLACK = (0, 0, 0)
 GREEN = (0, 255, 0)
 RED = (255, 0, 0)
 FINISH_LINE_COLOR = (255, 255, 0)
+GRAY = (128, 128, 128)
 
 # Screen setup
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -51,6 +52,9 @@ def game_loop():
 
 
     # Load car images
+    background_image = pygame.image.load('racing/background.jpeg')
+    background_image = pygame.transform.scale(background_image, (WIDTH, HEIGHT))
+
     car1_image = pygame.image.load("racing/car1.png")
     car2_image = pygame.image.load("racing/car2.png")
     finish_line = pygame.image.load("racing/finish.png")
@@ -90,7 +94,7 @@ def game_loop():
     start_time = time.time()  # Start time to calculate game duration
 
     while running:
-        screen.fill(WHITE)
+        screen.blit(background_image, (0, 0))
         screen.blit(finish_line, (finish_line_x, 0))
         
         # Draw the finish line
@@ -99,6 +103,7 @@ def game_loop():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+
 
             # Player 1 controls (arrow keys)
             if event.type == pygame.KEYDOWN:
@@ -112,12 +117,13 @@ def game_loop():
                     else:
                         wrong_hits1 += 1
                         if wrong_hits1 >= WRONG_HITS_LIMIT:
-                            print("Game Over Player 1")
-                            game_over_text = font.render("Game Over Player 1", True, BLACK)
-                            screen.blit(game_over_text, (WIDTH // 2 - 100, HEIGHT // 2))
-                            pygame.display.flip()
-                            pygame.time.wait(2000)  # Wait for 2 seconds before quitting
-                            running = False
+                            choice = win_screen("Player 2")
+                            if choice == "play_again":
+                                game_loop()
+                            elif choice == "main_menu":
+                                running = False
+                                return
+                           
                         player1.speed = 0  # Stop movement until corrected
 
 
@@ -132,13 +138,18 @@ def game_loop():
                     else:
                         wrong_hits2 += 1
                         if wrong_hits2 >= WRONG_HITS_LIMIT:
-                            print("Game Over Player 2")
-                            game_over_text = font.render("Game Over Player 2", True, BLACK)
-                            screen.blit(game_over_text, (WIDTH // 2 - 100, HEIGHT // 2))
-                            pygame.display.flip()
-                            pygame.time.wait(2000)  # Wait for 2 seconds before quitting
-                            running = False
+                            choice = win_screen("Player 1")
+                            if choice == "play_again":
+                                game_loop()
+                            elif choice == "main_menu":
+                                running = False
+                                return
                         player2.speed = 0  # Stop movement until corrected
+                if event.key == pygame.K_r: 
+                    a = pause_menu()
+                    if a == "stop":
+                        return
+
 
         # Update bar movement
         bar_position += bar_speed * bar_direction
@@ -173,30 +184,117 @@ def game_loop():
 
         # Check if Player 1 reached the finish line
         if player1.x + CAR_WIDTH >= finish_line_x:
-            # Display win message with final score for Player 1
-            win_text = font.render(f"Player 1 Wins! Final Score: {int(total_score1)}", True, BLACK)
-            screen.blit(win_text, (WIDTH // 2 - 150, HEIGHT // 2))
-            pygame.display.flip()
-            pygame.time.wait(2000)  # Wait for 2 seconds before quitting
-            running = False
+            choice = win_screen("Player 1")
+            if choice == "play_again":
+                game_loop()
+            elif choice == "main_menu":
+                running = False
+                return
 
         # Check if Player 2 reached the finish line
         if player2.x + CAR_WIDTH >= finish_line_x:
-            # Calculate the final score based on time and difficulty
-
-            # Display win message with final score for Player 2
-            win_text = font.render(f"Player 2 Wins! Final Score: {int(total_score2)}", True, BLACK)
-            screen.blit(win_text, (WIDTH // 2 - 150, HEIGHT // 2))
-            pygame.display.flip()
-            pygame.time.wait(2000)  # Wait for 2 seconds before quitting
-            running = False
+            choice = win_screen("Player 2")
+            if choice == "play_again":
+                game_loop()
+            elif choice == "main_menu":
+                running = False
+                return
 
         pygame.display.flip()
         clock.tick(FPS)
 
-    pygame.quit()
+def win_screen(winner):
+    selected_button = 0  # 0 for Play Again, 1 for Main Menu
+
+    while True:
+        screen.fill(WHITE)
+
+        # Display win message
+        win_text = font.render(f"{winner} Wins!", True, BLACK)
+        screen.blit(win_text, (WIDTH // 2 - 100, HEIGHT // 3))
+
+        # Create buttons
+        play_again_button = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2, 200, 50)
+        main_menu_button = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 70, 200, 50)
+
+        pygame.draw.rect(screen, GRAY, play_again_button)
+        pygame.draw.rect(screen, GRAY, main_menu_button)
+
+        play_text = font.render("Play Again", True, BLACK)
+        menu_text = font.render("Main Menu", True, BLACK)
+
+        screen.blit(play_text, (WIDTH // 2 - 50, HEIGHT // 2 + 10))
+        screen.blit(menu_text, (WIDTH // 2 - 50, HEIGHT // 2 + 80))
+
+        # Highlight the selected button with a white border
+        if selected_button == 0:
+            pygame.draw.rect(screen, BLACK, play_again_button, 3)
+        else:
+            pygame.draw.rect(screen, BLACK, main_menu_button, 3)
+
+        pygame.display.flip()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return "quit"
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
+                    selected_button = 1 - selected_button  # Toggle between 0 and 1
+                if event.key == pygame.K_RETURN:
+                    return "play_again" if selected_button == 0 else "main_menu"
+
+                
+def pause_menu():
+    paused = True
+    selected_button = 0  # 0 for Resume, 1 for Quit
+
+    while paused:
+        screen.fill(GRAY)
+        text = font.render("Game Paused", True, BLACK)
+        vari = "press buttons when cursor in green"
+        instructions = font.render(vari, True, BLACK)
+
+        resume_button = pygame.Rect(WIDTH // 2 - 70, HEIGHT // 2 - 20, 140, 40)
+        quit_button = pygame.Rect(WIDTH // 2 - 70, HEIGHT // 2 + 40, 140, 40)
+
+        # Draw buttons
+        pygame.draw.rect(screen, GREEN, resume_button)
+        pygame.draw.rect(screen, RED, quit_button)
+
+        resume_text = font.render("Resume", True, BLACK)
+        quit_text = font.render("Quit", True, BLACK)
+
+        screen.blit(text, (WIDTH // 2 - 80, HEIGHT // 3))
+        screen.blit(instructions, (WIDTH // 2 - 190, HEIGHT // 3 + 40))
+        screen.blit(resume_text, (WIDTH // 2 - 35, HEIGHT // 2 - 10))
+        screen.blit(quit_text, (WIDTH // 2 - 25, HEIGHT // 2 + 50))
+
+        # Highlight the selected button with a white border
+        if selected_button == 0:
+            pygame.draw.rect(screen, WHITE, resume_button, 3)
+        else:
+            pygame.draw.rect(screen, WHITE, quit_button, 3)
+
+        pygame.display.flip()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
+                    selected_button = 1 - selected_button  # Toggle between 0 and 1
+                if event.key == pygame.K_RETURN:
+                    if selected_button == 0:
+                        paused = False  # Resume
+                        return "resume"
+                    else:
+                        return "stop"
+
+
 def draw_sliding_bar(position, success_zone, bar_x, bar_y):
     pygame.draw.rect(screen, RED, (bar_x, bar_y, 200, 20))  # Red track
     pygame.draw.rect(screen, GREEN, (bar_x + success_zone[0], bar_y, success_zone[1] - success_zone[0], 20))  # Green success zone
     pygame.draw.rect(screen, BLACK, (bar_x + position, bar_y - 5, 10, 30))  # White indicator for the player to hit
-game_loop()
+if __name__ == "__main__":
+    game_loop()
+    print("end")
