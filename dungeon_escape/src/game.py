@@ -158,6 +158,11 @@ class Player:
         # Create a test rectangle for the new position
         new_rect = pygame.Rect(new_x, new_y, self.rect.width, self.rect.height)
         
+        # Clamp position to screen boundaries
+        new_x = max(0, min(new_x, WINDOW_WIDTH - self.rect.width))
+        new_y = max(0, min(new_y, WINDOW_HEIGHT - self.rect.height))
+        new_rect = pygame.Rect(new_x, new_y, self.rect.width, self.rect.height)
+        
         # Check wall collisions
         can_move = True
         for wall in walls:
@@ -354,10 +359,10 @@ class Boss(Enemy):
         pygame.draw.rect(self.sprite.image, eye_color,
                         (3*PLAYER_SIZE//4 - eye_width//2, eye_y, eye_width, eye_height))
         self.rect = pygame.Rect(x, y, PLAYER_SIZE, PLAYER_SIZE)
-        self.speed = 1.5  # Same speed as normal enemies
+        self.speed = 1.7  
         self.health = 120  # 2x normal enemy health (60 * 2)
         self.max_health = 120
-        self.damage = 30  # Double enemy damage (15 * 2)
+        self.damage = 50  # Double enemy damage (15 * 2)
         
     def move_towards(self, target, walls, other_enemies, lava_tiles, fire_pillars):
         current_time = pygame.time.get_ticks()
@@ -887,10 +892,21 @@ class Game:
             y < buffer or y > WINDOW_HEIGHT - buffer):
             return False
 
-        # Simplified pillar checks
-        for pillar in self.level.fire_pillars:
-            if test_rect.colliderect(pillar.rect):
-                return False
+        # In level 3, check for poison tiles and adjacent poison tiles
+        if self.current_level == 3:
+            # Check if current tile is a poison tile
+            for pillar in self.level.fire_pillars:
+                if pillar.rect.collidepoint(x + PLAYER_SIZE//2, y + PLAYER_SIZE//2):
+                    return False
+                    
+            # Check adjacent tiles (including diagonals)
+            for dx in [-1, 0, 1]:
+                for dy in [-1, 0, 1]:
+                    check_x = x + dx * TILE_SIZE
+                    check_y = y + dy * TILE_SIZE
+                    for pillar in self.level.fire_pillars:
+                        if pillar.rect.collidepoint(check_x + PLAYER_SIZE//2, check_y + PLAYER_SIZE//2):
+                            return False
         
         # Get tile coordinates
         tile_x = x // TILE_SIZE
