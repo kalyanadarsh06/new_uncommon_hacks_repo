@@ -3,6 +3,8 @@ from maze_generator import MazeGenerator
 from game_state import Game, GameState, Player
 
 class MazeGame:
+
+    first_time = True
     def __init__(self):
         # Initialize game window
         self.CELL_SIZE = 60  # Increased cell size for 600x600 window
@@ -63,15 +65,18 @@ class MazeGame:
                 if self.menu_cursor_pos == 1:  
                     pyxel.quit()
                 else:  
-                    self.menu_state = None  # Just clear the menu state, nothing else
+                    #self.menu_state = None  # Just clear the menu state, nothing else
+                    if self.menu_state == 'victory':
+                        self.first_time = False
+                    self.menu_state = None
             
 
         elif self.game.state == GameState.PLAYING:
             # Only show victory menu the first time reaching 10 levels
-            if self.game.levels_beaten == 10 and not self.menu_state:
-                self.menu_state = 'victory'
-                self.menu_cursor_pos = 0
-                return
+            if self.game.levels_beaten == 10 and self.first_time:
+               self.menu_state = 'victory'
+               self.menu_cursor_pos = 0
+               return
             
             # Handle input
             if not self.game.player.moving:
@@ -111,8 +116,9 @@ class MazeGame:
             self.game.update_player_movement()
             
             # Check win/lose conditions
-            self.game.check_game_over()
-            self.game.check_level_complete()
+            #if self.game.levels_beaten == 10:
+             #   self.game.check_game_over()
+            #self.game.check_level_complete()
             
         elif self.game.state == GameState.LEVEL_COMPLETE:
             if pyxel.btnp(pyxel.KEY_RETURN):
@@ -288,11 +294,9 @@ class MazeGame:
         self.init_level()
         self.game.state = GameState.PLAYING
     
-    def check_game_over(self):
-        """Check win/lose conditions."""
-        if self.game.levels_beaten >= 10 and self.menu_state == 'victory':
-            self.menu_state = None
-            self.menu_cursor_pos = 0
+    #def check_game_over(self):
+        #"""Check win/lose conditions."""
+        #self.menu_cursor_pos = 0
 
 if __name__ == '__main__':
     MazeGame()
