@@ -1,18 +1,22 @@
-import pygame
 import os
 import random
 import math
 import time
+import sys
 from enum import Enum
 
 # Initialize Pygame with error handling
 try:
-    # Set SDL video driver to cocoa for macOS
-    os.environ['SDL_VIDEODRIVER'] = 'cocoa'
+    import pygame
     pygame.init()
-except pygame.error as e:
-    print(f"Could not initialize Pygame: {e}")
-    exit(1)
+    print(f"Using Pygame version: {pygame.version.ver}")
+    print(f"Display driver: {pygame.display.get_driver()}")
+except ImportError as e:
+    print(f"Error importing Pygame: {e}")
+    sys.exit(1)
+except Exception as e:
+    print(f"Error initializing Pygame: {e}")
+    sys.exit(1)
 
 # Game constants
 WINDOW_WIDTH = 800
@@ -782,13 +786,19 @@ class Level:
 
 class Game:
     def __init__(self):
+        # Initialize display with a basic configuration first
         try:
-            self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+            self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.HWSURFACE | pygame.DOUBLEBUF)
             pygame.display.set_caption("AI Dungeon")
         except pygame.error as e:
-            print(f"Could not initialize display: {e}")
-            pygame.quit()
-            exit(1)
+            print(f"Could not initialize display with hardware surface, trying software: {e}")
+            try:
+                self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SWSURFACE)
+                pygame.display.set_caption("AI Dungeon")
+            except pygame.error as e:
+                print(f"Could not initialize display at all: {e}")
+                pygame.quit()
+                exit(1)
         self.clock = pygame.time.Clock()
         self.running = True
         self.state = GameState.COMBAT
@@ -864,72 +874,33 @@ class Game:
     def is_valid_spawn_position(self, x, y):
         # Create a test rect for collision checking
         test_rect = pygame.Rect(x - PLAYER_SIZE//2, y - PLAYER_SIZE//2, 
-                               PLAYER_SIZE, PLAYER_SIZE)
+                                PLAYER_SIZE, PLAYER_SIZE)
         
-        # Check wall collisions for all levels
+        # Check wall collisions
         for wall in self.level.walls:
             if test_rect.colliderect(wall):
                 return False
 
-        # Check boundaries for all levels
-        buffer = TILE_SIZE * 2
+        # Check boundaries (reduced buffer)
+        buffer = TILE_SIZE
         if (x < buffer or x > WINDOW_WIDTH - buffer or 
             y < buffer or y > WINDOW_HEIGHT - buffer):
             return False
 
-        # In Level 3, check for poison tiles with extra buffer
-        if self.current_level == 3:
-            # Check a 5x5 grid of tiles around the spawn point
-            tile_x = x // TILE_SIZE
-            tile_y = y // TILE_SIZE
-            
-            for dy in range(-2, 3):
-                for dx in range(-2, 3):
-                    check_x = (tile_x + dx) * TILE_SIZE
-                    check_y = (tile_y + dy) * TILE_SIZE
-                    
-                    # Check each fire pillar at this position
-                    for pillar in self.level.fire_pillars:
-                        if (hasattr(pillar, 'colors') and 
-                            pillar.colors[0] == COLORS['poison'] and
-                            abs(pillar.rect.centerx - (check_x + TILE_SIZE//2)) < TILE_SIZE and
-                            abs(pillar.rect.centery - (check_y + TILE_SIZE//2)) < TILE_SIZE):
-                            return False
-        else:
-            # For other levels, just check direct collisions
-            for pillar in self.level.fire_pillars:
-                if test_rect.colliderect(pillar.rect):
-                    return False
-        
-        # Check if too close to edge
-        buffer = TILE_SIZE * 2
-        if (x < buffer or x > WINDOW_WIDTH - buffer or 
-            y < buffer or y > WINDOW_HEIGHT - buffer):
-            return False
+        # Simplified pillar checks
+        for pillar in self.level.fire_pillars:
+            if test_rect.colliderect(pillar.rect):
+                return False
         
         # Get tile coordinates
         tile_x = x // TILE_SIZE
         tile_y = y // TILE_SIZE
         
-        # Check if position is on a floor tile
+        # Basic tile check
         if (tile_y >= len(self.level.tilemap) or
             tile_x >= len(self.level.tilemap[tile_y]) or
             self.level.tilemap[tile_y][tile_x][0] == 'wall'):
             return False
-            
-        # Check adjacent tiles for walls
-        for dy in [-1, 0, 1]:
-            for dx in [-1, 0, 1]:
-                check_x = tile_x + dx
-                check_y = tile_y + dy
-                # Skip checking the tile itself
-                if dx == 0 and dy == 0:
-                    continue
-                # Check if adjacent tile is within bounds and is a wall
-                if (check_y < len(self.level.tilemap) and
-                    check_x < len(self.level.tilemap[check_y]) and
-                    self.level.tilemap[check_y][check_x][0] == 'wall'):
-                    return False
         
         return True
         
@@ -956,63 +927,59 @@ class Game:
         return True
     
     def create_enemies(self):
+        print("Starting enemy creation...")
         enemies = []
         
         if self.current_level == 3:
-            # Level 3: 1 boss and 8 normal enemies
-            # Spawn boss in the center
+            print("Creating level 3 enemies...")
+            # Level 3: Try to spawn boss first
             center_x = ((WINDOW_WIDTH // TILE_SIZE) // 2) * TILE_SIZE
             center_y = ((WINDOW_HEIGHT // TILE_SIZE) // 2) * TILE_SIZE
             
-            # Try to spawn boss in center first
+            # Try to spawn boss
+            boss_spawned = False
             if self.is_valid_spawn_position(center_x, center_y):
                 enemies.append(Boss(center_x, center_y))
+                boss_spawned = True
+                print("Boss spawned in center")
             else:
-                # If center is not valid, find another spot for boss
-                attempts = 0
-                while attempts < 100:
-                    tile_x = random.randint(3, (WINDOW_WIDTH // TILE_SIZE) - 3)
-                    tile_y = random.randint(3, (WINDOW_HEIGHT // TILE_SIZE) - 3)
-                    x = tile_x * TILE_SIZE
-                    y = tile_y * TILE_SIZE
+                print("Trying alternative boss positions...")
+                for _ in range(10):  # Reduced attempts
+                    x = random.randint(4, (WINDOW_WIDTH // TILE_SIZE) - 4) * TILE_SIZE
+                    y = random.randint(4, (WINDOW_HEIGHT // TILE_SIZE) - 4) * TILE_SIZE
                     if self.is_valid_spawn_position(x, y):
                         enemies.append(Boss(x, y))
+                        boss_spawned = True
+                        print("Boss spawned in alternative position")
                         break
-                    attempts += 1
             
-            # Add exactly 6 normal enemies
+            if not boss_spawned:
+                print("Warning: Could not spawn boss")
+                return enemies
+            
+            # Add normal enemies with relaxed constraints
+            print("Spawning normal enemies...")
             enemies_spawned = 0
+            max_attempts = 50  # Reduced from 100
+            
             while enemies_spawned < 6:
-                attempts = 0
-                while attempts < 100 and enemies_spawned < 6:
-                    tile_x = random.randint(3, (WINDOW_WIDTH // TILE_SIZE) - 3)
-                    tile_y = random.randint(3, (WINDOW_HEIGHT // TILE_SIZE) - 3)
-                    x = tile_x * TILE_SIZE
-                    y = tile_y * TILE_SIZE
+                x = random.randint(3, (WINDOW_WIDTH // TILE_SIZE) - 3) * TILE_SIZE
+                y = random.randint(3, (WINDOW_HEIGHT // TILE_SIZE) - 3) * TILE_SIZE
+                
+                if self.is_valid_spawn_position(x, y):
+                    # Simplified distance checks
+                    player_dist = math.sqrt((x - self.player.rect.centerx)**2 + 
+                                           (y - self.player.rect.centery)**2)
                     
-                    if self.is_valid_spawn_position(x, y):
-                        # Check distance from player, boss, and other enemies
-                        player_dist = math.sqrt((x - self.player.rect.centerx)**2 + 
-                                              (y - self.player.rect.centery)**2)
-                        
-                        too_close = False
-                        if player_dist < TILE_SIZE * 6:  # At least 6 tiles from player
-                            too_close = True
-                        
-                        for enemy in enemies:
-                            min_dist = TILE_SIZE * 6 if isinstance(enemy, Boss) else TILE_SIZE * 4
-                            enemy_dist = math.sqrt((x - enemy.rect.centerx)**2 + 
-                                                  (y - enemy.rect.centery)**2)
-                            if enemy_dist < min_dist:
-                                too_close = True
-                                break
-                        
-                        if not too_close:
-                            enemies.append(Enemy(x, y, self.current_level))
-                            enemies_spawned += 1
-                            break  # Break the inner attempts loop
-                    
-                    attempts += 1
+                    if player_dist >= TILE_SIZE * 4:  # Reduced from 6
+                        enemies.append(Enemy(x, y, self.current_level))
+                        enemies_spawned += 1
+                        print(f"Spawned enemy {enemies_spawned}/6")
+                
+                max_attempts -= 1
+                if max_attempts <= 0:
+                    print(f"Warning: Could only spawn {enemies_spawned} enemies")
+                    break
         else:
             # Level 1 and 2: Regular enemies
             num_enemies = 6 if self.current_level == 2 else 3  # Exactly 3 enemies for level 1
@@ -1428,5 +1395,14 @@ class Game:
         pygame.quit()
 
 if __name__ == '__main__':
-    game = Game()
-    game.run()
+    try:
+        print("Starting game...")
+        game = Game()
+        print("Game initialized, starting game loop...")
+        game.run()
+    except Exception as e:
+        print(f"Error occurred: {e}")
+        import traceback
+        traceback.print_exc()
+    finally:
+        pygame.quit()
