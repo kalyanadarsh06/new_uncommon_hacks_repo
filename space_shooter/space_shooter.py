@@ -29,7 +29,7 @@ class Spaceship:
         self.speed = 5
         self.projectiles = []
         self.shoot_cooldown = 0  # Cooldown timer for shooting
-        self.image = pygame.image.load("space_shooter/assets/ship.png")  # Load the ship image
+        self.image = pygame.image.load("assets/ship.png")  # Load the ship image
         self.image = pygame.transform.scale(self.image, (self.width, self.height))  # Scale the image to fit
 
     def draw(self):
@@ -82,7 +82,7 @@ class Enemy:
         self.x = WIDTH
         self.y = 60 * round((random.randint(0, HEIGHT - self.height)) / 60)
         self.speed = random.uniform(2, 4)  # Slightly vary enemy speed
-        self.image = pygame.image.load("space_shooter/assets/Alien Spaceship.png")  # Load enemy sprite
+        self.image = pygame.image.load("assets/Alien Spaceship.png")  # Load enemy sprite
         self.image = pygame.transform.scale(self.image, (self.width, self.height))  # Scale the sprite
 
     def draw(self):
@@ -98,7 +98,7 @@ class Asteroid:
         self.x = WIDTH
         self.y = 60 * round((random.randint(0, HEIGHT - self.size)) / 60)
         self.speed = random.uniform(0.5, 2)  # Slower speed for asteroids
-        self.image = pygame.image.load("space_shooter/assets/Asteroid Brown.png")  # Load asteroid sprite
+        self.image = pygame.image.load("assets/Asteroid Brown.png")  # Load asteroid sprite
         self.image = pygame.transform.scale(self.image, (self.size, self.size))  # Scale the sprite
         self.hit_count = 0  # Track the number of hits
         self.flash_timer = 0  # Timer for flashing effect
@@ -122,7 +122,7 @@ class Coin:
         self.x = 60 * round((random.randint(WIDTH // 3, WIDTH - self.size)) / 60)  # Spawn on the right half of the grid
         self.y = 60 * round((random.randint(0, HEIGHT - self.size)) / 60)  # Align to grid
         self.lifetime = 300  # Lifetime in frames (e.g., 5 seconds at 60 FPS)
-        self.image = pygame.image.load("space_shooter/assets/coin_spin-Sheet.png")  # Load coin sprite
+        self.image = pygame.image.load("assets/coin_spin-Sheet.png")  # Load coin sprite
         self.image = pygame.transform.scale(self.image, (self.size, self.size))  # Scale the sprite
 
     def draw(self):
@@ -135,11 +135,11 @@ class Coin:
 
 # Load health bar images
 HEALTH_IMAGES = {
-    5: pygame.image.load("space_shooter/assets/Health Bar Five.png"),
-    4: pygame.image.load("space_shooter/assets/Health Bar Four.png"),
-    3: pygame.image.load("space_shooter/assets/Health Bar Three.png"),
-    2: pygame.image.load("space_shooter/assets/Health Bar Two.png"),
-    1: pygame.image.load("space_shooter/assets/Health Bar One.png"),
+    5: pygame.image.load("assets/Health Bar Five.png"),
+    4: pygame.image.load("assets/Health Bar Four.png"),
+    3: pygame.image.load("assets/Health Bar Three.png"),
+    2: pygame.image.load("assets/Health Bar Two.png"),
+    1: pygame.image.load("assets/Health Bar One.png"),
 }
 
 def game_over_screen(score):

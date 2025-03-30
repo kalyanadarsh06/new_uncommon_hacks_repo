@@ -51,9 +51,9 @@ def game_loop():
 
 
     # Load car images
-    car1_image = pygame.image.load("racing/car1.png")
-    car2_image = pygame.image.load("racing/car2.png")
-    finish_line = pygame.image.load("racing/finish.png")
+    car1_image = pygame.image.load("../car1.png")
+    car2_image = pygame.image.load("../car2.png")
+    finish_line = pygame.image.load("../finish.png")
 
     car1_image = pygame.transform.scale(car1_image, (70, 30))  # Adjust car sizes
     car2_image = pygame.transform.scale(car2_image, (70, 30))
