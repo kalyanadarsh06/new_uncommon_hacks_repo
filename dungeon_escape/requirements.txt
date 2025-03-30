@@ -1,5 +1,0 @@
-pygame==2.5.2
-google-generativeai==0.3.2
-python-dotenv==1.0.0
-requests==2.31.0  # For downloading sprite assets
-Pillow==10.2.0  # For image processing

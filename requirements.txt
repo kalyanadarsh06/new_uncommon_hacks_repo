@@ -1,2 +1,8 @@
-pygame==2.5.2
-pyserial==3.5
+# Core game dependencies
+pygame==2.6.1  # Latest version used by escape_amaze
+pyserial==3.5  # Used by monkey_game for hardware interface
+pyxel==2.0.7  # Used by escape_amaze for graphics
+
+# Image processing and assets
+Pillow==10.2.0  # For image processing
+requests==2.31.0  # For downloading assets
