@@ -199,4 +199,3 @@ def draw_sliding_bar(position, success_zone, bar_x, bar_y):
     pygame.draw.rect(screen, RED, (bar_x, bar_y, 200, 20))  # Red track
     pygame.draw.rect(screen, GREEN, (bar_x + success_zone[0], bar_y, success_zone[1] - success_zone[0], 20))  # Green success zone
     pygame.draw.rect(screen, BLACK, (bar_x + position, bar_y - 5, 10, 30))  # White indicator for the player to hit
-game_loop()
