@@ -4,10 +4,13 @@ import sys
 #sys.path.insert(1, "../../racing/src/main.py")
 # Initialize Pygame
 #import main as a
-from racing.src import main
+from racing.src import main as racer
 from space_shooter import space_shooter
-from monkey_game.src import game
+#from monkey_game.src import game
 from dungeon_escape.src import game as game4
+from escape_amaze.src import game_state 
+from escape_amaze.src import maze_generator
+from escape_amaze.src import main as main2 
 pygame.init()
 
 # Set the screen dimensions
@@ -35,7 +38,7 @@ image3 = pygame.image.load("combine/game3art.png")  # Path to your image
 image3 = pygame.transform.scale(image3, (150, 100))  # Resize image to fit the rectangle size
 image4 = pygame.image.load("combine/game4art.png")  # Path to your image
 image4 = pygame.transform.scale(image4, (150, 100))  # Resize image to fit the rectangle size
-image5 = pygame.image.load("combine/game5art.png")  # Path to your image
+image5 = pygame.image.load("combine/game5art.jpg")  # Path to your image
 image5 = pygame.transform.scale(image5, (150, 100))  # Resize image to fit the rectangle size
 image6 = pygame.image.load("combine/game6art.png")  # Path to your image
 image6 = pygame.transform.scale(image6, (150, 100))  # Resize image to fit the rectangle size
@@ -142,23 +145,20 @@ def arcade_game():
                 elif event.key == pygame.K_SPACE:  # Press space to print selected game number
                     print(f"Current Game: {current_game + 1}")
                     if current_game == 0: 
-                        main.game_loop()
+                        racer.main()
                     if current_game == 1: 
                         space_shooter.main()
-                    if current_game == 2: 
-                        game.main()
+                    #if current_game == 2: 
+                       # game.main()
                     if current_game == 3: 
                         game4.main()
+                    if current_game == 4:
+                        main2.MazeGame()
 
                         
 
 
                     
-
-
-                        
-
-
 
         # Display the current selected game
         current_game_text = f"Current Game: {current_game + 1}"

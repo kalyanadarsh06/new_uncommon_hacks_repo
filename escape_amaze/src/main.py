@@ -1,6 +1,6 @@
 import pyxel
-from maze_generator import MazeGenerator
-from game_state import Game, GameState, Player
+from escape_amaze.src.maze_generator import MazeGenerator
+from escape_amaze.src.game_state import Game, GameState, Player
 
 class MazeGame:
     def __init__(self):
