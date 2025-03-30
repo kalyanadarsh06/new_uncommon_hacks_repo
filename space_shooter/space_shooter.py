@@ -422,7 +422,7 @@ def main():
                     if enemy in enemies:  # Ensure the enemy is still in the list
                         enemies.remove(enemy)
                     score += 1
-                    if score >= 0:  # Check if the player has won
+                    if score >= 50:  # Check if the player has won
                         game_quit = win_screen()  # Show win screen
                     break
             if game_quit:
