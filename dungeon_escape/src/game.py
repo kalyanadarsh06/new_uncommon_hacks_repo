@@ -7,12 +7,12 @@ from enum import Enum
 
 try:
     import pygame
-    import serial  
+    import serial
     pygame.init()
+    pygame.font.init()
     print(f"Using Pygame version: {pygame.version.ver}")
     print(f"Display driver: {pygame.display.get_driver()}")
-    arduino = serial.Serial('/dev/tty.usbmodem141101', 9600, timeout=0.1)  # <-- Arduino connection
-
+    arduino = serial.Serial('/dev/tty.usbmodem141101', 9600, timeout=0.1) 
 except ImportError as e:
     print(f"Error importing Pygame: {e}")
     sys.exit(1)
@@ -22,9 +22,16 @@ except Exception as e:
 
 WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
+FPS = 60
 TILE_SIZE = 40
 PLAYER_SIZE = 40
-FPS = 60
+
+# Get the absolute path to the assets directory
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ASSETS_DIR = os.path.join(BASE_DIR, 'assets')
+IMAGES_DIR = os.path.join(ASSETS_DIR, 'images')
+SPRITES_DIR = os.path.join(IMAGES_DIR, 'sprites')
+TILES_DIR = os.path.join(IMAGES_DIR, 'tiles')
 
 COLORS = {
     'black': (0, 0, 0),
@@ -94,7 +101,7 @@ class Direction(Enum):
     RIGHT = (1, 0)
     
     def value_tuple(self):
-        return self.value
+        return self.value    
 
 class PowerUp:
     def __init__(self, x, y, power_up_type):
@@ -103,9 +110,9 @@ class PowerUp:
         self.creation_time = time.time()
         
         if power_up_type == PowerUpType.HEALTH_POTION:
-            self.sprite = Sprite(os.path.join('..', 'assets', 'images', 'sprites', 'potion.png'), TILE_SIZE)
+            self.sprite = Sprite(os.path.join(SPRITES_DIR, 'potion.png'), TILE_SIZE)
         else:
-            self.sprite = Sprite(os.path.join('..', 'assets', 'images', 'sprites', 'staff.png'), TILE_SIZE)
+            self.sprite = Sprite(os.path.join(SPRITES_DIR, 'staff.png'), TILE_SIZE)
             
         self.effect_radius = 0
         self.max_radius = TILE_SIZE * 5
@@ -131,11 +138,11 @@ class PowerUp:
 
 class Player:
     def __init__(self, x, y):
-        self.sprite = Sprite('../assets/images/sprites/player.png', PLAYER_SIZE)
+        self.sprite = Sprite(os.path.join(SPRITES_DIR, 'player.png'), PLAYER_SIZE)
         self.rect = pygame.Rect(x, y, PLAYER_SIZE, PLAYER_SIZE)
         self.grid_move_size = TILE_SIZE
-        self.health = 300
-        self.max_health = 300
+        self.health = 150
+        self.max_health = 150
         self.arrows = []
         self.last_shot_time = 0
         self.shoot_delay = 500
@@ -217,7 +224,7 @@ class Player:
 
 class Enemy:
     def __init__(self, x, y, level=1):
-        self.sprite = Sprite('../assets/images/sprites/enemy.png', PLAYER_SIZE)
+        self.sprite = Sprite(os.path.join(SPRITES_DIR, 'enemy.png'), PLAYER_SIZE)
         self.rect = pygame.Rect(x, y, PLAYER_SIZE, PLAYER_SIZE)
         self.speed = 0.8
         
@@ -313,7 +320,7 @@ class Enemy:
 class Boss(Enemy):
     def __init__(self, x, y):
         super().__init__(x, y, level=3)
-        self.sprite = Sprite('../assets/images/sprites/enemy.png', PLAYER_SIZE)
+        self.sprite = Sprite(os.path.join(SPRITES_DIR, 'enemy.png'), PLAYER_SIZE)
         original_surface = self.sprite.image
         self.sprite.image = pygame.Surface(original_surface.get_size(), pygame.SRCALPHA)
         self.sprite.image.fill((0, 0, 0, 255))
@@ -498,8 +505,8 @@ class Level:
         self.fire_pillars = []
         self.lava_tiles = []
         self.tiles = {
-            'floor': [Sprite(f'../assets/images/tiles/floor_{i}.png', TILE_SIZE) for i in range(3)],
-            'wall': [Sprite(f'../assets/images/tiles/wall_{i}.png', TILE_SIZE) for i in range(3)]
+            'floor': [Sprite(os.path.join(TILES_DIR, f'floor_{i}.png'), TILE_SIZE) for i in range(3)],
+            'wall': [Sprite(os.path.join(TILES_DIR, f'wall_{i}.png'), TILE_SIZE) for i in range(3)]
         }
         if level_number == 3:
             self.floor_color = COLORS['dark_red']
@@ -702,6 +709,10 @@ class Level:
 class Game:
     def __init__(self):
         try:
+            if not pygame.get_init():
+                pygame.init()
+            if not pygame.font.get_init():
+                pygame.font.init()
             self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.HWSURFACE | pygame.DOUBLEBUF)
             pygame.display.set_caption("Dungeon Escape")
         except pygame.error as e:
@@ -1130,10 +1141,16 @@ class Game:
                     break
     
     def create_pixelated_text(self, text, size, color):
-        font = pygame.font.Font(None, size)
-        text_surface = font.render(text, True, color)
-        
-        scale_factor = 4
+        try:
+            if not pygame.font.get_init():
+                pygame.font.init()
+            font = pygame.font.Font(None, size)
+            text_surface = font.render(text, True, color)
+            
+            scale_factor = 4
+        except Exception as e:
+            print(f"Error creating text: {e}")
+            return pygame.Surface((1, 1))
         small_surface = pygame.transform.scale(text_surface, 
             (text_surface.get_width()//scale_factor, 
              text_surface.get_height()//scale_factor))
@@ -1162,8 +1179,6 @@ class Game:
             return font.render(text, True, color)
         except:
             return self.create_pixelated_text(text, size, color)
-
-
 
     def draw_start_screen(self):
         self.screen.fill(COLORS['very_dark_gray'])
@@ -1215,6 +1230,8 @@ class Game:
             y += 15
         
         pygame.display.flip()
+
+
 
     def draw_pause_menu(self):
         # Create semi-transparent overlay
@@ -1288,7 +1305,7 @@ class Game:
         self.exit_button = quit_rect
 
         pygame.display.flip()
-
+        
     def draw_victory_screen(self):
         # Create semi-transparent overlay
         overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
@@ -1581,7 +1598,19 @@ class Game:
         
         return
 
+        
+
+
+def main():
+    try:
+        game = Game()
+        game.run()
+    except Exception as e:
+        print(f"Error occurred: {e}")
+        import traceback
+        traceback.print_exc()
+    finally:
+        pygame.quit()
+
 if __name__ == '__main__':
-    game = Game()
-    game.run()
-    print("here")
+    main()
