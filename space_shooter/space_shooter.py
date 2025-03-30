@@ -15,6 +15,7 @@ BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 RED = (255, 0, 0)
 BLUE = (0, 0, 255)
+GREEN = (0, 255, 0)
 
 # Clock for controlling frame rate
 clock = pygame.time.Clock()
@@ -142,29 +143,179 @@ HEALTH_IMAGES = {
     1: pygame.image.load("space_shooter/assets/Health Bar One.png"),
 }
 
-def game_over_screen(score):
-    screen.fill(BLACK)
+def start_screen():
+    overlay = pygame.Surface((WIDTH, HEIGHT))
+    overlay.fill(BLACK)
     font = pygame.font.SysFont(None, 72)
-    game_over_text = font.render("GAME OVER", True, RED)
-    score_text = pygame.font.SysFont(None, 36).render(f"Score: {score}", True, WHITE)
-    restart_text = pygame.font.SysFont(None, 36).render("Press R to Restart", True, WHITE)
+    instruction_font = pygame.font.SysFont(None, 36)
 
-    screen.blit(game_over_text, (WIDTH // 2 - game_over_text.get_width() // 2, HEIGHT // 3))
-    screen.blit(score_text, (WIDTH // 2 - score_text.get_width() // 2, HEIGHT // 2))
-    screen.blit(restart_text, (WIDTH // 2 - restart_text.get_width() // 2, HEIGHT // 2 + 50))
-
-    pygame.display.flip()
+    title_text = font.render("SPACE SHOOTER", True, WHITE)
+    instruction_text = instruction_font.render("Press SPACE to Play", True, WHITE)
 
     while True:
+        screen.blit(overlay, (0, 0))
+        screen.blit(title_text, (WIDTH // 2 - title_text.get_width() // 2, HEIGHT // 3))
+        screen.blit(instruction_text, (WIDTH // 2 - instruction_text.get_width() // 2, HEIGHT // 2))
+
+        pygame.display.flip()
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_r:
-                main()  # Restart the game
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+                return  # Start the game
+
+def pause_screen():
+    overlay = pygame.Surface((WIDTH, HEIGHT))
+    overlay.set_alpha(128)  # Make the overlay semi-transparent
+    overlay.fill(BLACK)
+    font = pygame.font.SysFont(None, 72)
+    button_font = pygame.font.SysFont(None, 36)
+    description_font = pygame.font.SysFont(None, 24)
+
+    paused_text = font.render("PAUSED", True, WHITE)
+    continue_button = pygame.Rect(WIDTH // 2 - 210, HEIGHT // 2 + 100, 200, 50)  # Left button moved down
+    quit_button = pygame.Rect(WIDTH // 2 + 10, HEIGHT // 2 + 100, 200, 50)  # Right button moved down
+
+    selected_button = "CONTINUE"  # Default selection
+
+    while True:
+        screen.blit(overlay, (0, 0))
+        screen.blit(paused_text, (WIDTH // 2 - paused_text.get_width() // 2, HEIGHT // 3))
+
+        # Game description
+        description_lines = [
+            "Move with WASD",
+            "Shoot your lasers with SPACE",
+            "Destroy the aliens with your lasers (1 point) or by running into them (0 points).",
+            "If they reach the left side of the screen, you will take one heart of damage.",
+            "Asteroids will damage you if you run into them.",
+            "Shoot them 5 times to destroy them",
+            "Coins give you 5 points."
+        ]
+        for i, line in enumerate(description_lines):
+            description_text = description_font.render(line, True, WHITE)
+            screen.blit(description_text, (WIDTH // 2 - description_text.get_width() // 2, HEIGHT // 3 + 50 + i * 20))
+
+        # Highlight selected button
+        pygame.draw.rect(screen, WHITE if selected_button == "CONTINUE" else (100, 100, 100), continue_button)
+        pygame.draw.rect(screen, WHITE if selected_button == "MAIN MENU" else (100, 100, 100), quit_button)
+
+        continue_text = button_font.render("Continue", True, BLACK if selected_button == "CONTINUE" else WHITE)
+        quit_text = button_font.render("Main Menu", True, BLACK if selected_button == "MAIN MENU" else WHITE)
+
+        screen.blit(continue_text, (continue_button.x + continue_button.width // 2 - continue_text.get_width() // 2, continue_button.y + 10))
+        screen.blit(quit_text, (quit_button.x + quit_button.width // 2 - quit_text.get_width() // 2, quit_button.y + 10))
+
+        pygame.display.flip()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_a:  # Select "Continue"
+                    selected_button = "CONTINUE"
+                elif event.key == pygame.K_d:  # Select "Quit"
+                    selected_button = "MAIN MENU"
+                elif event.key == pygame.K_SPACE:  # Confirm selection
+                    if selected_button == "CONTINUE":
+                        return False  # Resume the game
+                    elif selected_button == "MAIN MENU":
+                        return True
+
+def game_over_screen(score):
+    overlay = pygame.Surface((WIDTH, HEIGHT))
+    overlay.fill(BLACK)
+    font = pygame.font.SysFont(None, 72)
+    button_font = pygame.font.SysFont(None, 36)
+
+    game_over_text = font.render("GAME OVER", True, RED)
+    restart_button = pygame.Rect(WIDTH // 2 - 210, HEIGHT // 2, 200, 50)  # Left button
+    quit_button = pygame.Rect(WIDTH // 2 + 10, HEIGHT // 2, 200, 50)  # Right button
+
+    selected_button = "RESTART"  # Default selection
+
+    while True:
+        screen.blit(overlay, (0, 0))
+        screen.blit(game_over_text, (WIDTH // 2 - game_over_text.get_width() // 2, HEIGHT // 3))
+
+        # Highlight selected button
+        pygame.draw.rect(screen, WHITE if selected_button == "RESTART" else (100, 100, 100), restart_button)
+        pygame.draw.rect(screen, WHITE if selected_button == "MAIN MENU" else (100, 100, 100), quit_button)
+
+        restart_text = button_font.render("Restart", True, BLACK if selected_button == "RESTART" else WHITE)
+        quit_text = button_font.render("Main Menu", True, BLACK if selected_button == "MAIN MENU" else WHITE)
+
+        screen.blit(restart_text, (restart_button.x + restart_button.width // 2 - restart_text.get_width() // 2, restart_button.y + 10))
+        screen.blit(quit_text, (quit_button.x + quit_button.width // 2 - quit_text.get_width() // 2, quit_button.y + 10))
+
+        pygame.display.flip()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_a:  # Select "Restart"
+                    selected_button = "RESTART"
+                elif event.key == pygame.K_d:  # Select "Quit"
+                    selected_button = "MAIN MENU"
+                elif event.key == pygame.K_SPACE:  # Confirm selection
+                    if selected_button == "RESTART":
+                        main()  # Restart the game
+                        return True
+                    elif selected_button == "MAIN MENU":
+                        return True
+
+def win_screen():
+    overlay = pygame.Surface((WIDTH, HEIGHT))
+    overlay.fill(BLACK)
+    font = pygame.font.SysFont(None, 72)
+    button_font = pygame.font.SysFont(None, 36)
+
+    win_text = font.render("YOU WIN!", True, GREEN)
+    restart_button = pygame.Rect(WIDTH // 2 - 210, HEIGHT // 2, 200, 50)  # Left button
+    quit_button = pygame.Rect(WIDTH // 2 + 10, HEIGHT // 2, 200, 50)  # Right button
+
+    selected_button = "RESTART"  # Default selection
+
+    while True:
+        screen.blit(overlay, (0, 0))
+        screen.blit(win_text, (WIDTH // 2 - win_text.get_width() // 2, HEIGHT // 3))
+
+        # Highlight selected button
+        pygame.draw.rect(screen, WHITE if selected_button == "RESTART" else (100, 100, 100), restart_button)
+        pygame.draw.rect(screen, WHITE if selected_button == "MAIN MENU" else (100, 100, 100), quit_button)
+
+        restart_text = button_font.render("Restart", True, BLACK if selected_button == "RESTART" else WHITE)
+        quit_text = button_font.render("Main Menu", True, BLACK if selected_button == "MAIN MENU" else WHITE)
+
+        screen.blit(restart_text, (restart_button.x + restart_button.width // 2 - restart_text.get_width() // 2, restart_button.y + 10))
+        screen.blit(quit_text, (quit_button.x + quit_button.width // 2 - quit_text.get_width() // 2, quit_button.y + 10))
+
+        pygame.display.flip()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_a:  # Select "Restart"
+                    selected_button = "RESTART"
+                elif event.key == pygame.K_d:  # Select "Quit"
+                    selected_button = "MAIN MENU"
+                elif event.key == pygame.K_SPACE:  # Confirm selection
+                    if selected_button == "RESTART":
+                        main()  # Restart the game
+                        return True
+                    elif selected_button == "QUIT":
+                        return True
 
 # Main game loop
 def main():
+    start_screen()  # Show the start screen before the game begins
     spaceship = Spaceship()
     enemies = []
     asteroids = []  # List to store asteroids
@@ -179,8 +330,9 @@ def main():
     asteroid_spawn_rate_increment = 50  # Increment to make asteroids spawn less frequently over time
     game_start_time = pygame.time.get_ticks()  # Track the start time of the game
     time_of_last_keydown = -1000  # Timer for keydown events
+    game_quit = False
 
-    while True:
+    while not game_quit:
         screen.fill(BLACK)
 
         # Event handling
@@ -190,17 +342,22 @@ def main():
                 sys.exit()
             time_since_last_keydown = pygame.time.get_ticks() - time_of_last_keydown  # Calculate time since last keydown
             if event.type == pygame.KEYDOWN and (time_since_last_keydown > 200):
-                if event.key == pygame.K_UP:
+                if event.key == pygame.K_w:
                     spaceship.move("UP")
-                elif event.key == pygame.K_DOWN:
+                elif event.key == pygame.K_s:
                     spaceship.move("DOWN")
-                elif event.key == pygame.K_LEFT:
+                elif event.key == pygame.K_a:
                     spaceship.move("LEFT")
-                elif event.key == pygame.K_RIGHT:
+                elif event.key == pygame.K_d:
                     spaceship.move("RIGHT")
                 elif event.key == pygame.K_SPACE:
                     spaceship.shoot()
+                elif event.key == pygame.K_r:  # Press 'P' to pause
+                    game_quit = pause_screen()
+                    break
                 time_of_last_keydown = 0  # Reset the timer after a key press
+        if game_quit:
+            break
 
         spaceship.update_cooldown()  # Update the cooldown timer
 
@@ -236,17 +393,23 @@ def main():
         for enemy in enemies[:]:
             enemy.move()
             if enemy.x < 0:
-                enemies.remove(enemy)  # Remove enemy if it reaches the left side
+                if enemy in enemies:  # Ensure the enemy is still in the list
+                    enemies.remove(enemy)  # Remove enemy if it reaches the left side
                 health -= 1  # Reduce health by 1
                 if health <= 0:
-                    game_over_screen(score)  # Show game over screen
+                    game_quit = game_over_screen(score)  # Show game over screen
+                    break
             elif (
                 spaceship.x < enemy.x + enemy.width
                 and spaceship.x + spaceship.width > enemy.x
                 and spaceship.y < enemy.y + enemy.height
                 and spaceship.y + spaceship.height > enemy.y
             ):
-                enemies.remove(enemy)  # Remove enemy on collision (no damage to the player)
+                if enemy in enemies:  # Ensure the enemy is still in the list
+                    enemies.remove(enemy)  # Remove enemy on collision (no damage to the player)
+            if game_quit:
+                break
+
             for projectile in spaceship.projectiles[:]:
                 if (
                     projectile.x < enemy.x + enemy.width
@@ -254,10 +417,16 @@ def main():
                     and projectile.y < enemy.y + enemy.height
                     and projectile.y + projectile.height > enemy.y
                 ):
-                    spaceship.projectiles.remove(projectile)
-                    enemies.remove(enemy)
+                    if projectile in spaceship.projectiles:  # Ensure the projectile is still in the list
+                        spaceship.projectiles.remove(projectile)
+                    if enemy in enemies:  # Ensure the enemy is still in the list
+                        enemies.remove(enemy)
                     score += 1
+                    if score >= 50:  # Check if the player has won
+                        game_quit = win_screen()  # Show win screen
                     break
+            if game_quit:
+                break
 
         # Update asteroids
         for asteroid in asteroids[:]:
@@ -288,7 +457,10 @@ def main():
                     asteroids.remove(asteroid)  # Remove asteroid after flashing
                     health -= 1  # Reduce health by 1
                     if health <= 0:
-                        game_over_screen(score)  # Show game over screen
+                        game_quit = game_over_screen(score)  # Show game over screen
+                        break
+        if game_quit:
+            break
 
         # Update coins
         for coin in coins[:]:
@@ -323,9 +495,15 @@ def main():
             screen.blit(health_image, (WIDTH // 2 - 100, HEIGHT - 50))  # Adjusted position for larger size
         else:
             game_over_screen(score)  # Show game over screen when health is 0
+            break
+        if game_quit:
+            break
 
         pygame.display.flip()
         clock.tick(60)
+
+    #GAME OVER function - make this take you to the main menu
+    start_screen()
 
 if __name__ == "__main__":
     main()
