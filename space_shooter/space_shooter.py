@@ -4,6 +4,8 @@ import sys
 
 # Initialize Pygame
 pygame.init()
+last_command_time = 0
+command_cooldown = 200
 
 # Screen dimensions
 WIDTH, HEIGHT = 600, 600
@@ -147,7 +149,7 @@ def game_over_screen(score):
     font = pygame.font.SysFont(None, 72)
     game_over_text = font.render("GAME OVER", True, RED)
     score_text = pygame.font.SysFont(None, 36).render(f"Score: {score}", True, WHITE)
-    restart_text = pygame.font.SysFont(None, 36).render("Press R to Restart", True, WHITE)
+    restart_text = pygame.font.SysFont(None, 36).render("Press SPACE to Restart", True, WHITE)
 
     screen.blit(game_over_text, (WIDTH // 2 - game_over_text.get_width() // 2, HEIGHT // 3))
     screen.blit(score_text, (WIDTH // 2 - score_text.get_width() // 2, HEIGHT // 2))
@@ -160,11 +162,19 @@ def game_over_screen(score):
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_r:
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
                 main()  # Restart the game
 
 # Main game loop
 def main():
+    global last_command_time  # Add this line to access the global variable
+    import serial
+    global arduino
+    try:
+        arduino = serial.Serial('/dev/tty.usbmodem141101', 9600, timeout=0.1)
+    except Exception as e:
+        print(f"[ERROR] Could not connect to Arduino: {e}")
+        arduino = None
     spaceship = Spaceship()
     enemies = []
     asteroids = []  # List to store asteroids
@@ -190,18 +200,32 @@ def main():
                 sys.exit()
             time_since_last_keydown = pygame.time.get_ticks() - time_of_last_keydown  # Calculate time since last keydown
             if event.type == pygame.KEYDOWN and (time_since_last_keydown > 200):
-                if event.key == pygame.K_UP:
+                if event.key == pygame.K_w:
                     spaceship.move("UP")
-                elif event.key == pygame.K_DOWN:
+                elif event.key == pygame.K_s:
                     spaceship.move("DOWN")
-                elif event.key == pygame.K_LEFT:
+                elif event.key == pygame.K_a:
                     spaceship.move("LEFT")
-                elif event.key == pygame.K_RIGHT:
+                elif event.key == pygame.K_d:
                     spaceship.move("RIGHT")
                 elif event.key == pygame.K_SPACE:
                     spaceship.shoot()
                 time_of_last_keydown = 0  # Reset the timer after a key press
-
+        if arduino.in_waiting:
+            command = arduino.readline().decode('utf-8').strip()
+            now = pygame.time.get_ticks()
+            if now - last_command_time > command_cooldown:
+                last_command_time = now
+                if command == "W":
+                    spaceship.move("UP")
+                elif command == "S":
+                    spaceship.move("DOWN")
+                elif command == "A":
+                    spaceship.move("LEFT")
+                elif command == "D":
+                    spaceship.move("RIGHT")
+                elif command == "SPACE":
+                    spaceship.shoot()
         spaceship.update_cooldown()  # Update the cooldown timer
 
         # Update projectiles
