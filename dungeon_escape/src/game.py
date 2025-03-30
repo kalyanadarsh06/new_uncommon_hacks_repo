@@ -128,8 +128,8 @@ class Player:
         self.sprite = Sprite('../assets/images/sprites/player.png', PLAYER_SIZE)
         self.rect = pygame.Rect(x, y, PLAYER_SIZE, PLAYER_SIZE)
         self.grid_move_size = TILE_SIZE
-        self.health = 150
-        self.max_health = 150
+        self.health = 300
+        self.max_health = 300
         self.arrows = []
         self.last_shot_time = 0
         self.shoot_delay = 500
@@ -1259,7 +1259,7 @@ class Game:
         self.draw_retro_button(resume_rect, COLORS['green'] if self.selected_button == 0 else COLORS['dark_red'])
         self.draw_retro_button(quit_rect, COLORS['red'] if self.selected_button == 1 else COLORS['dark_red'])
         resume_text = self.create_menu_text("RESUME", 32, COLORS['white'])
-        quit_text = self.create_menu_text("QUIT", 32, COLORS['white'])
+        quit_text = self.create_menu_text("MAIN MENU", 32, COLORS['white'])
 
         self.screen.blit(resume_text, (resume_rect.centerx - resume_text.get_width()//2, 
                                       resume_rect.centery - resume_text.get_height()//2))
@@ -1322,7 +1322,7 @@ class Game:
 
         # Button text
         restart_text = self.create_menu_text("PLAY AGAIN", 32, COLORS['white'])
-        exit_text = self.create_menu_text("QUIT", 32, COLORS['white'])
+        exit_text = self.create_menu_text("MAIN MENU", 32, COLORS['white'])
 
         self.screen.blit(restart_text, (restart_rect.centerx - restart_text.get_width()//2, 
                                       restart_rect.centery - restart_text.get_height()//2))
