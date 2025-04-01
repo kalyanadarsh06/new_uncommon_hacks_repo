@@ -1,0 +1,1 @@
+Your goal is to beat as many levels as possible by escaping to the cyan square. Arrows move your ball until it reaches a wall or edge, WASD moves your cursor,[f] places a block, [e] deletes a block. You can collect coins to buy blocks and deletions. After 10 levels, you win! You can choose whether you'd like to continue to unlimited or return to main menu after that.
