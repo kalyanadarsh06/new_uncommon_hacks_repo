@@ -141,7 +141,7 @@ class Game:
             
             # Check if we reached top-right corner
             if self.player.x == self.grid_size - 1 and self.player.y == 0:
-                self.levels_beaten += 1  # Increment only when beating a level
+                #self.levels_beaten += 1  # Increment only when beating a level
                 self.state = GameState.LEVEL_COMPLETE
 
     def update_player_movement(self):
